@@ -1,151 +1,58 @@
-# RentACarApi
+# RentACar Backend API
 
-RentACarApi is a simple ASP.NET Core Web API project for a rent a car system. The goal is to demonstrate basic backend development concepts with a clean MVP structure.
+Bu projeyi ASP.NET Core Web API, Entity Framework Core, Katmanlı Yapı, DTO kullanarak backend geliştirme mantığını daha iyi kavramak, daha temiz bir mimaride çalışmayı öğrenmek ve pratik yapmak için geliştirdiğim temel seviyede bir backend API uygulamasıdır. Projede temel olarak müşteri, araç ve kiralama işlemleri yapılabilmektedir. Araçlar listelenebilir, yeni araç eklenebilir, güncellenebilir ve silinebilir. Müşteri ekleme ve listeleme işlemleri de bulunmaktadır. Kiralama tarafında ise araç müsaitlik kontrolü ve kiralama oluşturma işlemleri yapılabilmektedir.
 
-## Technologies
+## Kullandığım Teknolojiler ve Araçlar 
 
 - ASP.NET Core Web API
-- Entity Framework Core
+- EF Core
 - PostgreSQL
 - Swagger
-- DTOs
-- Service Layer
+- DTO
 - Repository Pattern
-- Dependency Injection
-- Code First Migration
+- Service Layer
+- DI
+- Migration
 
-## Features
+## Projede Yapılanlar
 
-- Create and list customers
-- Create, update, delete and list vehicles
-- Create and list rentals
-- Check vehicle availability by date range
-- Calculate rental total amount from vehicle type daily price
-- Seed vehicle types and branches
+- Customer, Vehicle, VehicleType, Branch ve Rental entity yapıları oluşturuldu.
+- EF Core ile veritabanı bağlantısı kuruldu.
+- Code First yaklaşımıyla migration yapısı hazırlandı.
+- Controller, Service ve Repository katmanları ayrıldı.
+- DTO yapıları kullanılarak request modelleri düzenlendi.
+- Araç kiralama için tarih aralığına göre müsaitlik kontrolü eklendi.
+- Kiralama tutarı, aracın günlük ücretine göre hesaplanacak şekilde düzenlendi.
+- Swagger üzerinden API endpointleri test edilebilir hale getirildi.
 
-## Database Tables
+## Endpointler
 
-- Customers
-- VehicleTypes
-- Vehicles
-- Branches
-- Rentals
+Vehicles
+GET /api/vehicles
+GET /api/vehicles/{id}
+POST /api/vehicles
+PUT /api/vehicles/{id}
+DELETE /api/vehicles/{id}
 
-## Business Rule
+Customers
+GET /api/customers
+POST /api/customers
 
-The same vehicle cannot be rented if the selected date range overlaps with an existing rental.
+Rentals
+GET /api/rentals
+POST /api/rentals
+GET /api/rentals/availability
 
-Overlap rule:
+Projeyi Çalıştırma
 
-```text
-rentDate < existingRental.ReturnDate && returnDate > existingRental.RentDate
-```
+Öncelikle appsettings.json dosyasındaki PostgreSQL bağlantı ayarlarını düzenledim.
 
-## API Endpoints
+Projeyi çalıştırmak için:
 
-### Vehicles
-
-- `GET /api/vehicles`
-- `GET /api/vehicles/{id}`
-- `POST /api/vehicles`
-- `PUT /api/vehicles/{id}`
-- `DELETE /api/vehicles/{id}`
-
-### Customers
-
-- `GET /api/customers`
-- `POST /api/customers`
-
-### Rentals
-
-- `GET /api/rentals`
-- `POST /api/rentals`
-- `GET /api/rentals/availability?vehicleId=1&rentDate=2026-06-21&returnDate=2026-06-24`
-
-## How To Run
-
-1. Update the PostgreSQL connection string in `appsettings.json` if needed.
-2. Create the database with EF Core migration commands.
-3. Run the API.
-4. Open Swagger in the browser.
-
-```bash
 dotnet restore
-dotnet ef migrations add InitialCreate
 dotnet ef database update
 dotnet run
-```
 
-Swagger URL:
+Proje çalıştıktan sonra Swagger arayüzü üzerinden endpointleri test edebilirim.
 
-```text
 https://localhost:{port}/swagger
-```
-
-## Migration Commands
-
-Install the EF Core CLI tool if it is not installed:
-
-```bash
-dotnet tool install --global dotnet-ef
-```
-
-Create migration and update database:
-
-```bash
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
-
-## Sample Request Bodies
-
-### POST /api/vehicles
-
-```json
-{
-  "brand": "Toyota",
-  "model": "Corolla",
-  "modelYear": 2022,
-  "plateNumber": "34ABC123",
-  "vehicleTypeId": 2
-}
-```
-
-### POST /api/customers
-
-```json
-{
-  "firstName": "Utku",
-  "lastName": "Ozturk",
-  "email": "utku@example.com",
-  "phoneNumber": "05555555555"
-}
-```
-
-### POST /api/rentals
-
-```json
-{
-  "customerId": 1,
-  "vehicleId": 1,
-  "branchId": 1,
-  "rentDate": "2026-06-20",
-  "returnDate": "2026-06-25"
-}
-```
-
-### Availability Test
-
-```text
-GET /api/rentals/availability?vehicleId=1&rentDate=2026-06-21&returnDate=2026-06-24
-```
-
-## What I Learned
-
-- How to design RESTful API endpoints with ASP.NET Core
-- How to model relational data with Entity Framework Core
-- How to use DTOs instead of taking entities directly from requests
-- How to separate business logic into a service layer
-- How to use repository pattern for data access
-- How to register dependencies with dependency injection
-- How to prepare a Code First migration structure for PostgreSQL

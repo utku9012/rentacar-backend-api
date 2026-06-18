@@ -1,6 +1,6 @@
 # RentACar Backend API
 
-Bu projeyi ASP.NET Core Web API, Entity Framework Core, Katmanlı Yapı, DTO kullanarak backend geliştirme mantığını daha iyi kavramak, daha temiz bir mimaride çalışmayı öğrenmek ve pratik yapmak için geliştirdiğim temel seviyede bir backend API uygulamasıdır. Projede temel olarak müşteri, araç ve kiralama işlemleri yapılabilmektedir. Araçlar listelenebilir, yeni araç eklenebilir, güncellenebilir ve silinebilir. Müşteri ekleme ve listeleme işlemleri de bulunmaktadır. Kiralama tarafında ise araç müsaitlik kontrolü ve kiralama oluşturma işlemleri yapılabilmektedir.
+Bu proje ASP.NET Core Web API, Entity Framework Core, Katmanlı Yapı, DTO kullanarak backend geliştirme mantığını daha iyi kavramak, daha temiz bir mimaride çalışmayı öğrenmek ve pratik yapmak için geliştirdiğim temel seviyede bir backend API uygulamasıdır. Projede temel olarak müşteri, araç ve kiralama işlemleri yapılabilmektedir. Araçlar listelenebilir, yeni araç eklenebilir, güncellenebilir ve silinebilir. Müşteri ekleme ve listeleme işlemleri de bulunmaktadır. Kiralama tarafında ise araç müsaitlik kontrolü ve kiralama oluşturma işlemleri yapılabilmektedir.
 
 ## Kullandığım Teknolojiler ve Araçlar 
 

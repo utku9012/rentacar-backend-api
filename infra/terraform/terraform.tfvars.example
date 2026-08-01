@@ -1,0 +1,7 @@
+project_name = "rentacar"
+aws_region   = "eu-central-1"
+eks_kubernetes_version = "1.36"
+
+db_name     = "rentacardb"
+db_username = "rentacar"
+db_password = "change-me-before-apply"

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="RentACar.IntegrationTests/RentACar.IntegrationTests.csproj" />
+  <Project Path="RentACar.UnitTests/RentACar.UnitTests.csproj" />
+  <Project Path="RentACarApi.csproj" />
+</Solution>

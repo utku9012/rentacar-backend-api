@@ -1,0 +1,15 @@
+title = "RentACarApi Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Ignore local and generated development artifacts"
+paths = [
+  '''(^|/)\.vs/''',
+  '''(^|/)\.git/''',
+  '''(^|/)bin/''',
+  '''(^|/)obj/''',
+  '''(^|/)TestResults/''',
+  '''(^|/)coverage/'''
+]

@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rentacar-api-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  rentacar-api.json: |
+    {
+      "title": "RentACar API",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "HTTP Requests",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_received_total[5m])) by (code)",
+              "legendFormat": "{{code}}"
+            }
+          ],
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Request Duration p95",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ],
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+        }
+      ]
+    }

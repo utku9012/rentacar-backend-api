@@ -1,0 +1,77 @@
+replicaCount: 2
+
+image:
+  repository: replace-me.dkr.ecr.eu-central-1.amazonaws.com/rentacar-api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+environment: Production
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: alb
+  annotations: {}
+  hosts:
+    - host: rentacar.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+connectionString:
+  existingSecret: ""
+  secretName: rentacar-api-secrets
+  key: DefaultConnection
+  value: ""
+
+migrations:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/metrics"
+  prometheus.io/port: "8080"
+
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  interval: 30s
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

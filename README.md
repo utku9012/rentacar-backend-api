@@ -2,7 +2,7 @@
 
 ASP.NET Core Web API ile geliştirilmiş basit bir Rent A Car backend projesidir.
 
-Bu projenin ana amacı; REST API, Entity Framework Core, PostgreSQL, DTO, Service Layer, Repository Pattern, Docker Compose, test ve temel CI/CD mantığını gösterebilmektir.
+Bu projenin ana amacı; Geçmişte hazırladığım bir backend API'ının geliştirirek production'a hazır hale getiren mimariyi öğrenmek. REST API, Entity Framework Core, PostgreSQL, DTO, Service Layer, Repository Pattern, Docker Compose, test ve temel CI/CD mantığını gösterebilmektir.
 
 > Not: `terraform/`, `helm/`, `gitops/` ve observability dosyaları production-ready mimariyi öğrenmek için hazırlanmış DevOps çalışmalarımdır. Gerçek AWS ortamında deploy etmedim. Öğrenme ve pratik amaçlı yapılmıştır.
 
@@ -187,9 +187,9 @@ Pull request açıldığında GitHub Actions ile:
 
 çalışır.
 
-## İleri DevOps Öğrenme Eklentileri
+## DevOps Eklentileri
 
-Bu bölüm junior backend projesinin ana kapsamı değildir. Production benzeri sistemlerin nasıl tasarlandığını öğrenmek için eklenmiştir.
+Bu bölüm backend projesinin ana kapsamı değildir. Production benzeri sistemlerin nasıl tasarlandığını öğrenmek için eklenmiştir.
 
 ```mermaid
 flowchart TD
@@ -202,7 +202,7 @@ flowchart TD
     EKS --> Obs["Prometheus / Grafana / Loki / OpenTelemetry"]
 ```
 
-Eklenen ileri seviye konular:
+Eklenen konular:
 
 - `terraform/`: AWS VPC, EKS, RDS, ECR, IAM, GitHub OIDC altyapı kodları
 - `helm/`: Kubernetes için reusable Helm chart
@@ -210,39 +210,3 @@ Eklenen ileri seviye konular:
 - `gitops/platform/observability`: Prometheus, Grafana, Loki, Promtail, OpenTelemetry Collector hazırlığı
 
 Bu dosyalar gerçek AWS hesabında otomatik çalıştırılmaz. Önce plan/dry-run yapılmalı, maliyet ve güvenlik etkileri incelenmelidir.
-
-## Faydalı Komutlar
-
-```bash
-dotnet restore RentACarApi.slnx
-dotnet build RentACarApi.slnx --configuration Release
-dotnet test RentACarApi.slnx --configuration Release
-docker compose up --build
-docker compose down -v
-```
-
-Makefile kullananlar için:
-
-```bash
-make help
-make test
-make docker-up
-make smoke-test
-make gitops-validate
-```
-
-## Öğrendiklerim
-
-Bu projede özellikle şunları öğrendim:
-
-- Backend katmanlarını sade ve okunabilir ayırma
-- EF Core ile PostgreSQL modelleme
-- DTO ile API request/response kontrolü
-- Business rule yazma ve test etme
-- Docker Compose ile lokal geliştirme ortamı kurma
-- CI pipeline mantığı
-- Production benzeri DevOps mimarisinin temel parçaları
-
-## Kısa Not
-
-Bu proje backend temellerini göstermek için tasarlanmıştır. İleri DevOps klasörleri, uzmanlık iddiasından çok öğrenme sürecini ve production mimarisine olan ilgiyi göstermek için eklenmiştir.

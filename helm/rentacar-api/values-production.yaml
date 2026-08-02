@@ -1,0 +1,91 @@
+replicaCount: 2
+
+image:
+  repository: REPLACE_WITH_ECR_REPOSITORY
+  tag: REPLACE_WITH_COMMIT_SHA
+
+gitops:
+  enabled: true
+
+config:
+  aspNetCoreEnvironment: Production
+  swaggerEnabled: "false"
+  metricsEnabled: "true"
+  observability:
+    tracingEnabled: "true"
+    otlpEndpoint: http://opentelemetry-collector.observability:4317
+
+ingress:
+  enabled: true
+  alb:
+    listenPorts: '[{"HTTP":80},{"HTTPS":443}]'
+    sslRedirect: "443"
+    certificateArn: REPLACE_WITH_ACM_CERTIFICATE_ARN
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - api.example.com
+      secretName: rentacar-api-tls
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+externalSecrets:
+  enabled: true
+  remoteSecretKey: REPLACE_WITH_AWS_SECRETS_MANAGER_SECRET_NAME
+
+migration:
+  useHelmHooks: false
+  useArgoHooks: true
+
+smokeTest:
+  enabled: true
+  useArgoHook: true
+
+networkPolicy:
+  enabled: true
+  allowMonitoring: true
+  rds:
+    enabled: true
+    cidr: 10.60.96.0/19
+
+serviceMonitor:
+  enabled: true
+
+prometheusRule:
+  enabled: true
+
+grafanaDashboard:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels: {}
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels: {}

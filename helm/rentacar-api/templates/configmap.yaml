@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rentacar-api.fullname" . }}-config
+  labels:
+    {{- include "rentacar-api.labels" . | nindent 4 }}
+  {{- if .Values.gitops.enabled }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.gitops.syncWaves.workload | quote }}
+  {{- end }}
+data:
+  ASPNETCORE_ENVIRONMENT: {{ .Values.config.aspNetCoreEnvironment | quote }}
+  ASPNETCORE_URLS: {{ printf "http://+:%v" .Values.service.targetPort | quote }}
+  Application__Name: {{ .Values.config.applicationName | quote }}
+  Features__SwaggerEnabled: {{ .Values.config.swaggerEnabled | quote }}
+  Features__MetricsEnabled: {{ .Values.config.metricsEnabled | quote }}
+  Serilog__MinimumLevel__Default: {{ .Values.config.logging.default | quote }}
+  Serilog__MinimumLevel__Override__Microsoft.AspNetCore: {{ .Values.config.logging.microsoftAspNetCore | quote }}
+  Observability__ServiceName: {{ .Values.config.observability.serviceName | quote }}
+  Observability__Tracing__Enabled: {{ .Values.config.observability.tracingEnabled | quote }}
+  Observability__OtlpEndpoint: {{ .Values.config.observability.otlpEndpoint | quote }}
+  OTEL_SERVICE_NAME: {{ .Values.config.observability.serviceName | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.config.observability.otlpEndpoint | quote }}

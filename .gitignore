@@ -29,6 +29,16 @@ appsettings.*.local.json
 *.tfvars
 !*.tfvars.example
 .terraform/
+**/.terraform/
+.terraform.lock.hcl
+**/.terraform.lock.hcl
+backend.hcl
+tfplan
+tfplan.*
+*.tfplan
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
 crash.log
 crash.*.log
 override.tf
@@ -39,3 +49,6 @@ override.tf.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local image exports
+*.tar

@@ -1,0 +1,68 @@
+name: Promote to Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Immutable image tag to promote. Leave empty to promote current dev tag.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  GITOPS_REPOSITORY: ${{ vars.GITOPS_REPOSITORY }}
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source scripts
+        uses: actions/checkout@v4
+
+      - name: Checkout GitOps repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPOSITORY }}
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          path: gitops-repo
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Resolve image
+        id: image
+        run: |
+          repo="$(yq '.image.repository' gitops-repo/environments/dev/values.yaml)"
+          tag="${{ inputs.image_tag }}"
+          if [ -z "$tag" ]; then
+            tag="$(yq '.image.tag' gitops-repo/environments/dev/values.yaml)"
+          fi
+          digest="$(yq '.image.digest // ""' gitops-repo/environments/dev/values.yaml)"
+          echo "repository=${repo}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update staging values
+        env:
+          GITOPS_ROOT: gitops-repo
+        run: ./scripts/update-gitops-image.sh staging "${{ steps.image.outputs.repository }}" "${{ steps.image.outputs.tag }}" "${{ steps.image.outputs.digest }}"
+
+      - name: Open promotion pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          path: gitops-repo
+          branch: promote/staging-${{ steps.image.outputs.tag }}
+          title: "promote(staging): rentacar-api ${{ steps.image.outputs.tag }}"
+          commit-message: "promote(staging): rentacar-api ${{ steps.image.outputs.tag }}"
+          body: |
+            Promotes the same ECR image artifact from development to staging.
+
+            Image tag: `${{ steps.image.outputs.tag }}`
+            Image digest: `${{ steps.image.outputs.digest }}`

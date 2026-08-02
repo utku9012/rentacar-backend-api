@@ -1,0 +1,72 @@
+name: Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Immutable image tag to promote. Leave empty to promote current staging tag.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  GITOPS_REPOSITORY: ${{ vars.GITOPS_REPOSITORY }}
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production-promotion
+    steps:
+      - name: Checkout source scripts
+        uses: actions/checkout@v4
+
+      - name: Checkout GitOps repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPOSITORY }}
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          path: gitops-repo
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Resolve image
+        id: image
+        run: |
+          repo="$(yq '.image.repository' gitops-repo/environments/staging/values.yaml)"
+          tag="${{ inputs.image_tag }}"
+          if [ -z "$tag" ]; then
+            tag="$(yq '.image.tag' gitops-repo/environments/staging/values.yaml)"
+          fi
+          digest="$(yq '.image.digest // ""' gitops-repo/environments/staging/values.yaml)"
+          echo "repository=${repo}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update production values
+        env:
+          GITOPS_ROOT: gitops-repo
+          ALLOW_PRODUCTION_UPDATE: "true"
+        run: ./scripts/update-gitops-image.sh production "${{ steps.image.outputs.repository }}" "${{ steps.image.outputs.tag }}" "${{ steps.image.outputs.digest }}"
+
+      - name: Open production promotion pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          path: gitops-repo
+          branch: promote/production-${{ steps.image.outputs.tag }}
+          title: "promote(production): rentacar-api ${{ steps.image.outputs.tag }}"
+          commit-message: "promote(production): rentacar-api ${{ steps.image.outputs.tag }}"
+          body: |
+            Controlled production promotion. This PR must be reviewed before merge.
+
+            Image tag: `${{ steps.image.outputs.tag }}`
+            Image digest: `${{ steps.image.outputs.digest }}`
+
+            Rollback: revert this GitOps commit or use Argo CD operational rollback, then update Git to match.

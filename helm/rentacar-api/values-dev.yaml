@@ -1,0 +1,62 @@
+replicaCount: 1
+
+image:
+  repository: REPLACE_WITH_ECR_REPOSITORY
+  tag: REPLACE_WITH_COMMIT_SHA
+
+gitops:
+  enabled: true
+
+config:
+  aspNetCoreEnvironment: Docker
+  swaggerEnabled: "true"
+  metricsEnabled: "true"
+  observability:
+    tracingEnabled: "false"
+    otlpEndpoint: ""
+
+ingress:
+  enabled: true
+  hosts:
+    - host: api-dev.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+autoscaling:
+  enabled: false
+
+podDisruptionBudget:
+  enabled: false
+
+networkPolicy:
+  enabled: false
+
+serviceMonitor:
+  enabled: true
+
+prometheusRule:
+  enabled: true
+
+grafanaDashboard:
+  enabled: true
+
+externalSecrets:
+  enabled: true
+  remoteSecretKey: rentacar/dev/database
+
+migration:
+  useHelmHooks: false
+  useArgoHooks: true
+
+smokeTest:
+  enabled: true
+  useArgoHook: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

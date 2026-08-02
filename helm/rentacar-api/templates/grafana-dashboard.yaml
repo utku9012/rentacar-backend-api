@@ -1,0 +1,63 @@
+{{- if .Values.grafanaDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rentacar-api.fullname" . }}-dashboard
+  labels:
+    {{- include "rentacar-api.labels" . | nindent 4 }}
+    {{- with .Values.grafanaDashboard.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if .Values.gitops.enabled }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.gitops.syncWaves.traffic | quote }}
+  {{- end }}
+data:
+  rentacar-api-dashboard.json: |-
+    {
+      "uid": "rentacar-api",
+      "title": "RentACar API",
+      "schemaVersion": 39,
+      "version": 1,
+      "tags": ["rentacar", "aspnetcore"],
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Request Rate",
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_received_total{job=\"{{ include "rentacar-api.fullname" . }}\"}[5m]))",
+              "legendFormat": "requests/sec"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "5xx Error Rate",
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_received_total{code=~\"5..\",job=\"{{ include "rentacar-api.fullname" . }}\"}[5m]))",
+              "legendFormat": "5xx/sec"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "p95 Latency",
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"{{ include "rentacar-api.fullname" . }}\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+{{- end }}

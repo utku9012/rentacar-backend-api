@@ -1,0 +1,24 @@
+project_name = "rentacar"
+environment  = "staging"
+aws_region   = "eu-central-1"
+owner        = "replace-with-owner"
+
+nat_gateway_mode = "single"
+endpoint_public_access = true
+public_access_cidrs    = ["replace-with-office-or-vpn-cidr/32"]
+
+node_instance_types = ["t3.medium"]
+node_capacity_type  = "SPOT"
+node_min_size       = 2
+node_desired_size   = 2
+node_max_size       = 4
+
+rds_instance_class          = "db.t4g.small"
+rds_multi_az                = false
+rds_backup_retention_period = 7
+rds_deletion_protection     = false
+rds_skip_final_snapshot     = true
+
+budget_enabled            = false
+budget_monthly_limit_usd  = 100
+budget_notification_email = null

@@ -1,0 +1,52 @@
+{{- if .Values.smokeTest.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "rentacar-api.fullname" . }}-smoke-test
+  labels:
+    {{- include "rentacar-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: smoke-test
+  annotations:
+    {{- if .Values.smokeTest.useArgoHook }}
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    {{- end }}
+    {{- if .Values.gitops.enabled }}
+    argocd.argoproj.io/sync-wave: {{ .Values.gitops.syncWaves.smokeTest | quote }}
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.smokeTest.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.smokeTest.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.smokeTest.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "rentacar-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: smoke-test
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: smoke-test
+          image: {{ .Values.smokeTest.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              base_url="http://{{ include "rentacar-api.fullname" . }}:{{ .Values.service.port }}"
+              for i in $(seq 1 30); do
+                if curl -fsS "${base_url}/health/ready"; then
+                  break
+                fi
+                sleep 2
+              done
+              curl -fsS "${base_url}/health/live"
+              curl -fsS "${base_url}/health/ready"
+              curl -fsS "${base_url}/api/vehicles"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+{{- end }}

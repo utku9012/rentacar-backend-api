@@ -1,0 +1,38 @@
+name: GitOps Repository Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitOps repository
+        uses: actions/checkout@v4
+
+      - name: YAML lint
+        run: docker run --rm -v "${{ github.workspace }}:/work" -w /work pipelinecomponents/yamllint:0.33.0 yamllint .
+
+      - name: Reject latest image tags
+        run: |
+          ! grep -R "tag: latest" environments applications bootstrap projects
+
+      - name: Gitleaks
+        run: >
+          docker run --rm
+          -v "${{ github.workspace }}:/repo"
+          ghcr.io/gitleaks/gitleaks:v8.30.1
+          dir /repo --redact --verbose
+
+      - name: Trivy config
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          exit-code: 1
+          severity: CRITICAL,HIGH

@@ -1,0 +1,59 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "rentacar-api.fullname" . }}
+  labels:
+    {{- include "rentacar-api.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if .Values.gitops.enabled }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.gitops.syncWaves.traffic | quote }}
+  {{- end }}
+spec:
+  groups:
+    - name: {{ include "rentacar-api.fullname" . }}.availability
+      rules:
+        {{- if .Values.prometheusRule.rules.highErrorRate.enabled }}
+        - alert: RentACarApiHighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_received_total{code=~"5..",job="{{ include "rentacar-api.fullname" . }}"}[5m]))
+              /
+              clamp_min(sum(rate(http_requests_received_total{job="{{ include "rentacar-api.fullname" . }}"}[5m])), 1)
+            ) > {{ .Values.prometheusRule.rules.highErrorRate.threshold }}
+          for: {{ .Values.prometheusRule.rules.highErrorRate.for }}
+          labels:
+            severity: {{ .Values.prometheusRule.rules.highErrorRate.severity | quote }}
+          annotations:
+            summary: RentACar API has a high HTTP 5xx error rate
+            description: More than {{ mulf .Values.prometheusRule.rules.highErrorRate.threshold 100 }} percent of HTTP requests are failing.
+        {{- end }}
+        {{- if .Values.prometheusRule.rules.highLatency.enabled }}
+        - alert: RentACarApiHighLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum(rate(http_request_duration_seconds_bucket{job="{{ include "rentacar-api.fullname" . }}"}[5m])) by (le)
+            ) > {{ .Values.prometheusRule.rules.highLatency.thresholdSeconds }}
+          for: {{ .Values.prometheusRule.rules.highLatency.for }}
+          labels:
+            severity: {{ .Values.prometheusRule.rules.highLatency.severity | quote }}
+          annotations:
+            summary: RentACar API p95 latency is high
+            description: p95 HTTP request latency is above {{ .Values.prometheusRule.rules.highLatency.thresholdSeconds }} second.
+        {{- end }}
+        {{- if .Values.prometheusRule.rules.readinessFailures.enabled }}
+        - alert: RentACarApiReadinessFailing
+          expr: |
+            max by (namespace, pod) (kube_pod_container_status_ready{container="{{ include "rentacar-api.name" . }}"}) == 0
+          for: {{ .Values.prometheusRule.rules.readinessFailures.for }}
+          labels:
+            severity: {{ .Values.prometheusRule.rules.readinessFailures.severity | quote }}
+          annotations:
+            summary: RentACar API pod is not ready
+            description: At least one RentACar API container has remained unready.
+        {{- end }}
+{{- end }}

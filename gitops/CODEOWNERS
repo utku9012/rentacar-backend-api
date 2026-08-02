@@ -1,0 +1,3 @@
+/environments/production/ @platform-owners
+/environments/staging/ @platform-team
+/applications/production.yaml @platform-owners

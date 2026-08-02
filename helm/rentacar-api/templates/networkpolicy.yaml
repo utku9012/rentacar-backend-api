@@ -1,0 +1,66 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rentacar-api.fullname" . }}
+  labels:
+    {{- include "rentacar-api.labels" . | nindent 4 }}
+  {{- if .Values.gitops.enabled }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.gitops.syncWaves.traffic | quote }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rentacar-api.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingressControllerNamespaceSelector | nindent 14 }}
+          {{- if .Values.networkPolicy.ingressControllerPodSelector }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingressControllerPodSelector | nindent 14 }}
+          {{- end }}
+        {{- if .Values.networkPolicy.allowSameNamespace }}
+        - podSelector: {}
+        {{- end }}
+        {{- if .Values.networkPolicy.allowMonitoring }}
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.monitoringNamespaceSelector | nindent 14 }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.targetPort }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if and .Values.networkPolicy.rds.enabled .Values.networkPolicy.rds.cidr }}
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicy.rds.cidr }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.rds.port }}
+    {{- end }}
+    {{- if .Values.networkPolicy.allowExternalHttps }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
+{{- end }}

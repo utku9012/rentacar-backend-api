@@ -1,0 +1,25 @@
+project_name = "rentacar"
+environment  = "production"
+aws_region   = "eu-central-1"
+owner        = "replace-with-owner"
+
+nat_gateway_mode = "per_az"
+endpoint_public_access = false
+public_access_cidrs    = ["replace-with-vpn-or-corporate-cidr/32"]
+
+node_instance_types = ["t3.medium"]
+node_capacity_type  = "ON_DEMAND"
+node_min_size       = 2
+node_desired_size   = 2
+node_max_size       = 6
+
+rds_instance_class            = "db.t4g.medium"
+rds_multi_az                  = true
+rds_backup_retention_period   = 30
+rds_deletion_protection       = true
+rds_skip_final_snapshot       = false
+rds_final_snapshot_identifier = "rentacar-production-postgres-final-snapshot"
+
+budget_enabled            = false
+budget_monthly_limit_usd  = 300
+budget_notification_email = null

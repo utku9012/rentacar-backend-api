@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+data:
+  policy.csv: |
+    p, role:developer, applications, get, rentacar/rentacar-api-dev, allow
+    p, role:developer, applications, sync, rentacar/rentacar-api-dev, allow
+    p, role:developer, applications, get, rentacar/rentacar-api-staging, allow
+    p, role:operator, applications, get, rentacar/*, allow
+    p, role:operator, applications, sync, rentacar/rentacar-api-staging, allow
+    p, role:admin, *, *, *, allow
+  policy.default: role:readonly
+  scopes: '[groups]'

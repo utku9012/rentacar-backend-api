@@ -1,7 +1,0 @@
-.git/
-.github/
-.vs/
-bin/
-obj/
-*.log
-*.tmp

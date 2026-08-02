@@ -1,0 +1,5 @@
+project_name      = "rentacar"
+environment       = "bootstrap"
+aws_region        = "eu-central-1"
+owner             = "replace-with-owner"
+state_bucket_name = "replace-with-globally-unique-terraform-state-bucket"

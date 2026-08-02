@@ -1,0 +1,10 @@
+image:
+  repository: REPLACE_WITH_ECR_REPOSITORY
+  tag: REPLACE_WITH_COMMIT_SHA
+  digest: ""
+
+gitops:
+  commitSha: REPLACE_WITH_COMMIT_SHA
+
+deploymentMetadata:
+  workflowRunUrl: ""

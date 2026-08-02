@@ -1,0 +1,67 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "rentacar-api.fullname" . }}-migrate
+  labels:
+    {{- include "rentacar-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  {{- if .Values.migration.useHelmHooks }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: {{ .Values.migration.hookWeight | quote }}
+    helm.sh/hook-delete-policy: {{ .Values.migration.hookDeletePolicy | quote }}
+  {{- else if .Values.migration.useArgoHooks }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: {{ .Values.gitops.syncWaves.migration | quote }}
+    argocd.argoproj.io/hook-delete-policy: {{ .Values.migration.argoHookDeletePolicy | quote }}
+  {{- else if .Values.gitops.enabled }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.gitops.syncWaves.migration | quote }}
+  {{- end }}
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.migration.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "rentacar-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "rentacar-api.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "rentacar-api.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--migrate"
+          envFrom:
+            - configMapRef:
+                name: {{ include "rentacar-api.fullname" . }}-config
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rentacar-api.databaseSecretName" . }}
+                  key: {{ .Values.existingSecret.connectionStringKey }}
+            - name: GIT_COMMIT_SHA
+              value: {{ default .Values.image.tag .Values.gitops.commitSha | quote }}
+            - name: IMAGE_TAG
+              value: {{ .Values.image.tag | quote }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

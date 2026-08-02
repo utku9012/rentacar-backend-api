@@ -6,13 +6,17 @@ on:
       - main
       - master
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   build-test-and-scan:
     name: Build, Test and Security Scan
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout repository
@@ -20,22 +24,70 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 10.0.301
+          cache: true
+          cache-dependency-path: |
+            packages.lock.json
+            RentACar.UnitTests/packages.lock.json
+            RentACar.IntegrationTests/packages.lock.json
 
       - name: Restore dependencies
-        run: dotnet restore RentACarApi.slnx
+        run: dotnet restore RentACarApi.slnx --locked-mode
+
+      - name: Verify formatting
+        run: dotnet format RentACarApi.slnx --verify-no-changes --verbosity minimal --no-restore
 
       - name: Build
         run: dotnet build RentACarApi.slnx --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test RentACarApi.slnx --configuration Release --no-build --verbosity normal
+      - name: Unit tests
+        run: >
+          dotnet test RentACar.UnitTests/RentACar.UnitTests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=unit-tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory TestResults/unit
+
+      - name: Integration tests
+        run: >
+          dotnet test RentACar.IntegrationTests/RentACar.IntegrationTests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=integration-tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory TestResults/integration
+
+      - name: Upload test and coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-and-coverage
+          path: |
+            TestResults/**/*.trx
+            TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn
 
       - name: Build Docker image
         run: docker build --tag rentacar-api:${{ github.sha }} .
+
+      - name: Hadolint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
 
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@v0.36.0
@@ -49,3 +101,16 @@ jobs:
 
       - name: Gitleaks secret scan
         run: docker run --rm -v "${{ github.workspace }}:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 dir /repo --redact --verbose
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config
+
+      - name: Start Docker Compose stack
+        run: docker compose up -d --build
+
+      - name: Run smoke tests
+        run: bash scripts/smoke-test.sh http://localhost:8080
+
+      - name: Stop Docker Compose stack
+        if: always()
+        run: docker compose down -v

@@ -1,0 +1,4 @@
+# EKS control-plane and worker nodes need outbound access to AWS APIs,
+# ECR and image registries through NAT or future VPC endpoints.
+# Ingress remains restricted and this should be revisited when VPC endpoints are added.
+AVD-AWS-0104

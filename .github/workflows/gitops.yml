@@ -1,0 +1,59 @@
+name: GitOps Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - "gitops/**"
+      - "helm/**"
+      - "docs/observability-*.md"
+      - "scripts/update-gitops-image.sh"
+      - ".github/workflows/gitops.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
+      - name: Render GitOps Helm values
+        run: |
+          helm template rentacar-api helm/rentacar-api -f helm/rentacar-api/values-dev.yaml -f gitops/environments/dev/values.yaml > rendered-dev.yaml
+          helm template rentacar-api helm/rentacar-api -f helm/rentacar-api/values-staging.yaml -f gitops/environments/staging/values.yaml > rendered-staging.yaml
+          helm template rentacar-api helm/rentacar-api -f helm/rentacar-api/values-production.yaml -f gitops/environments/production/values.yaml > rendered-production.yaml
+
+      - name: YAML syntax validation
+        run: docker run --rm -v "${{ github.workspace }}:/work" -w /work pipelinecomponents/yamllint:0.33.0 yamllint gitops
+
+      - name: Validate no latest tags
+        run: |
+          ! grep -R "tag: latest" gitops helm
+          ! grep -R "latest" rendered-*.yaml
+
+      - name: Kubeconform
+        uses: docker://ghcr.io/yannh/kubeconform:v0.6.7
+        with:
+          args: -strict -summary -ignore-missing-schemas rendered-dev.yaml rendered-staging.yaml rendered-production.yaml
+
+      - name: Trivy config scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: gitops
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+
+      - name: Gitleaks
+        run: docker run --rm -v "${{ github.workspace }}:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 dir /repo/gitops --redact --verbose

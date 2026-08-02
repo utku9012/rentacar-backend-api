@@ -1,50 +1,103 @@
 # RentACarApi
 
-RentACarApi is a simple ASP.NET Core Web API project for a rent a car system. The goal is to demonstrate basic backend development concepts with a clean MVP structure.
+ASP.NET Core Web API ile geliştirilmiş basit bir Rent A Car backend projesidir.
 
-## Technologies
+Bu projenin ana amacı; yeni mezun/junior backend seviyesinde REST API, Entity Framework Core, PostgreSQL, DTO, Service Layer, Repository Pattern, Docker Compose, test ve temel CI/CD mantığını gösterebilmektir.
+
+> Not: `terraform/`, `helm/`, `gitops/` ve observability dosyaları production-ready mimariyi öğrenmek için hazırlanmış ileri seviye DevOps çalışmalarıdır. Gerçek AWS ortamında apply edilmedi; portfolio/learning amaçlıdır.
+
+## Ana Backend Kapsamı
 
 - ASP.NET Core Web API
-- Entity Framework Core
 - PostgreSQL
-- Swagger
-- DTOs
+- Entity Framework Core Code First Migration
+- DTO kullanımı
 - Service Layer
 - Repository Pattern
 - Dependency Injection
-- Code First Migration
+- Swagger/OpenAPI
+- Health check endpointleri
+- Prometheus `/metrics` endpointi
+- Docker Compose ile API + PostgreSQL
+- Unit test ve integration test
+- GitHub Actions CI
 
-## Features
+## Mimari
 
-- Create and list customers
-- Create, update, delete and list vehicles
-- Create and list rentals
-- Check vehicle availability by date range
-- Calculate rental total amount from vehicle type daily price
-- Seed vehicle types and branches
-- Unit and integration test coverage for rental business rules and PostgreSQL migrations
+```mermaid
+flowchart LR
+    Client["Swagger / Postman"] --> API["ASP.NET Core Web API"]
+    API --> Service["Service Layer"]
+    Service --> Repo["Repository Layer"]
+    Repo --> EF["EF Core"]
+    EF --> DB[("PostgreSQL")]
+```
 
-## Database Tables
+## Docker Compose
+
+Lokal geliştirme için ana çalıştırma yöntemi:
+
+```bash
+docker compose up --build
+```
+
+Compose ile çalışan servisler:
+
+- `postgres`: PostgreSQL veritabanı
+- `migrations`: EF Core migration çalıştırıcı
+- `api`: RentACar API
+
+```mermaid
+flowchart TD
+    Developer["Developer"] --> Compose["Docker Compose"]
+    Compose --> Postgres["PostgreSQL"]
+    Compose --> Migrations["EF Core Migrations"]
+    Migrations --> Postgres
+    Compose --> API["RentACar API"]
+    API --> Postgres
+```
+
+Erişim adresleri:
+
+```text
+http://localhost:8080/swagger
+http://localhost:8080/health/live
+http://localhost:8080/health/ready
+http://localhost:8080/metrics
+```
+
+## Veritabanı Kuralları
+
+Temel tablolar:
 
 - Customers
-- VehicleTypes
 - Vehicles
+- VehicleTypes
 - Branches
 - Rentals
 
-## Business Rule
+Önemli iş kuralı:
 
-The same vehicle cannot be rented if the selected date range overlaps with an existing rental.
+```text
+Aynı araç çakışan tarih aralığında kiralanamaz.
+```
 
-Overlap rule:
+Çakışma kontrolü:
 
 ```text
 rentDate < existingRental.ReturnDate && returnDate > existingRental.RentDate
 ```
 
-## API Endpoints
+Kiralama oluştururken:
 
-### Vehicles
+- Dönüş tarihi başlangıç tarihinden büyük olmalı.
+- Customer, Vehicle ve Branch var olmalı.
+- Araç seçilen tarih aralığında müsait olmalı.
+- Toplam tutar gün sayısı x günlük fiyat olarak hesaplanır.
+
+## API Endpointleri
+
+Vehicles:
 
 - `GET /api/vehicles`
 - `GET /api/vehicles/{id}`
@@ -52,260 +105,20 @@ rentDate < existingRental.ReturnDate && returnDate > existingRental.RentDate
 - `PUT /api/vehicles/{id}`
 - `DELETE /api/vehicles/{id}`
 
-### Customers
+Customers:
 
 - `GET /api/customers`
 - `POST /api/customers`
 
-### Rentals
+Rentals:
 
 - `GET /api/rentals`
 - `POST /api/rentals`
 - `GET /api/rentals/availability?vehicleId=1&rentDate=2026-06-21&returnDate=2026-06-24`
 
-## How To Run
+## Örnek Request Body
 
-1. Update the PostgreSQL connection string in `appsettings.json` if needed.
-2. Create the database with EF Core migration commands.
-3. Run the API.
-4. Open Swagger in the browser.
-
-```bash
-dotnet restore
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-dotnet run
-```
-
-Swagger URL:
-
-```text
-https://localhost:{port}/swagger
-```
-
-## Run With Docker
-
-Docker Compose starts the API and PostgreSQL together.
-
-```bash
-docker compose up --build
-```
-
-Container URLs:
-
-```text
-http://localhost:8081/swagger
-http://localhost:8081/health/live
-http://localhost:8081/health/ready
-```
-
-PostgreSQL is only available inside the Docker network for the API. It is not published to the host machine, so it will not conflict with a local PostgreSQL installation.
-
-The API reads the PostgreSQL connection string from this environment variable in `docker-compose.yml`:
-
-```text
-ConnectionStrings__DefaultConnection
-```
-
-When the API runs with `ASPNETCORE_ENVIRONMENT=Docker`, pending EF Core migrations are applied automatically on startup.
-
-## Tests
-
-The solution contains two test projects:
-
-- `RentACar.UnitTests`
-- `RentACar.IntegrationTests`
-
-Unit tests cover rental business rules:
-
-- A rental can be created when the vehicle is available
-- The same vehicle cannot be rented for overlapping dates
-- Return date must be greater than rent date
-- Total rental amount is calculated from daily price
-- A missing vehicle returns a clear error
-
-Integration tests use a real PostgreSQL container with Testcontainers and verify that the API can connect and apply EF Core migrations.
-
-Run all tests:
-
-```bash
-dotnet test
-```
-
-## CI Pipeline
-
-Pull requests to `main` or `master` run a GitHub Actions pipeline from `.github/workflows/ci.yml`.
-
-The pipeline runs:
-
-- `dotnet restore`
-- `dotnet build`
-- `dotnet test`
-- `docker build`
-- Trivy Docker image vulnerability scan
-- Gitleaks secret scan
-
-## Production Deployment Foundation
-
-The repository includes a production-like AWS and Kubernetes deployment foundation:
-
-- Terraform for AWS infrastructure
-- AWS ECR for Docker images
-- AWS EKS for Kubernetes
-- AWS RDS PostgreSQL for the database
-- Helm chart for Kubernetes deployment
-- Argo CD Application manifests for GitOps deployment
-- Prometheus metrics endpoint at `/metrics`
-- Prometheus/Grafana configuration files
-
-### Terraform
-
-Terraform files are under:
-
-```text
-infra/terraform
-```
-
-Create a local tfvars file from the example:
-
-```bash
-cp infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars
-```
-
-Update `db_password` in `terraform.tfvars`. Do not commit real tfvars files.
-
-Then run:
-
-```bash
-cd infra/terraform
-terraform init
-terraform plan
-terraform apply
-```
-
-Terraform creates:
-
-- VPC, public/private subnets, NAT gateway
-- ECR repository
-- EKS cluster and managed node group
-- Private RDS PostgreSQL instance
-
-### Build And Push Image To ECR
-
-After Terraform creates ECR, authenticate Docker:
-
-```bash
-aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.eu-central-1.amazonaws.com
-```
-
-Build, tag and push:
-
-```bash
-docker build -t rentacar-api:latest .
-docker tag rentacar-api:latest <ecr-repository-url>:latest
-docker push <ecr-repository-url>:latest
-```
-
-### Kubernetes Secret For RDS
-
-Create the namespace:
-
-```bash
-kubectl apply -f deploy/kubernetes/namespace.yaml
-```
-
-Create the database connection secret from the example file:
-
-```bash
-kubectl apply -f deploy/kubernetes/rentacar-api-secret.example.yaml
-```
-
-For a real environment, replace the example connection string with the RDS endpoint and real password before applying.
-
-### Helm Deployment
-
-Update `deploy/helm/rentacar-api/values-aws.yaml` with the ECR repository URL and image tag.
-
-Install or upgrade:
-
-```bash
-helm upgrade --install rentacar-api deploy/helm/rentacar-api \
-  --namespace rentacar \
-  --create-namespace \
-  -f deploy/helm/rentacar-api/values-aws.yaml
-```
-
-The Helm chart includes:
-
-- Deployment
-- Service
-- Optional Ingress
-- HPA
-- Liveness and readiness probes
-- Migration Job
-- Optional ServiceMonitor
-
-### Argo CD
-
-Argo CD manifests are under:
-
-```text
-deploy/argocd
-```
-
-Update the placeholder GitHub repo URL in:
-
-```text
-deploy/argocd/rentacar-api-application.yaml
-deploy/argocd/monitoring-application.yaml
-```
-
-Then apply:
-
-```bash
-kubectl apply -f deploy/argocd/rentacar-api-application.yaml
-kubectl apply -f deploy/argocd/monitoring-application.yaml
-kubectl apply -f deploy/argocd/monitoring-extras-application.yaml
-```
-
-### Monitoring
-
-The API exposes Prometheus metrics at:
-
-```text
-/metrics
-```
-
-The monitoring values file is:
-
-```text
-deploy/monitoring/kube-prometheus-stack-values.yaml
-```
-
-A starter Grafana dashboard ConfigMap is included:
-
-```text
-deploy/monitoring/rentacar-api-dashboard.yaml
-```
-
-## Migration Commands
-
-Install the EF Core CLI tool if it is not installed:
-
-```bash
-dotnet tool install --global dotnet-ef
-```
-
-Create migration and update database:
-
-```bash
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
-
-## Sample Request Bodies
-
-### POST /api/vehicles
+`POST /api/vehicles`
 
 ```json
 {
@@ -317,7 +130,7 @@ dotnet ef database update
 }
 ```
 
-### POST /api/customers
+`POST /api/customers`
 
 ```json
 {
@@ -328,7 +141,7 @@ dotnet ef database update
 }
 ```
 
-### POST /api/rentals
+`POST /api/rentals`
 
 ```json
 {
@@ -340,18 +153,96 @@ dotnet ef database update
 }
 ```
 
-### Availability Test
+## Testler
 
-```text
-GET /api/rentals/availability?vehicleId=1&rentDate=2026-06-21&returnDate=2026-06-24
+Tüm testleri çalıştırmak için:
+
+```bash
+dotnet test RentACarApi.slnx --configuration Release
 ```
 
-## What I Learned
+Test edilen başlıca senaryolar:
 
-- How to design RESTful API endpoints with ASP.NET Core
-- How to model relational data with Entity Framework Core
-- How to use DTOs instead of taking entities directly from requests
-- How to separate business logic into a service layer
-- How to use repository pattern for data access
-- How to register dependencies with dependency injection
-- How to prepare a Code First migration structure for PostgreSQL
+- Araç müsaitse kiralama oluşturulması
+- Çakışan tarihte aynı aracın kiralanamaması
+- Hatalı tarih aralığının reddedilmesi
+- Kiralama tutarının doğru hesaplanması
+- Eksik customer, vehicle veya branch durumları
+- PostgreSQL migration ve repository davranışları
+
+Integration testler Testcontainers kullanır; lokal PostgreSQL kurulu olmasına gerek yoktur.
+
+## CI Pipeline
+
+Pull request açıldığında GitHub Actions ile:
+
+- restore
+- build
+- test
+- coverage
+- Docker build
+- Trivy scan
+- Gitleaks scan
+- Docker Compose validation
+
+çalışır.
+
+## İleri DevOps Öğrenme Eklentileri
+
+Bu bölüm junior backend projesinin ana kapsamı değildir. Production benzeri sistemlerin nasıl tasarlandığını öğrenmek için eklenmiştir.
+
+```mermaid
+flowchart TD
+    Source["Application Source"] --> CI["GitHub Actions"]
+    CI --> ECR["AWS ECR"]
+    CI --> GitOps["GitOps Repo"]
+    GitOps --> Argo["Argo CD"]
+    Argo --> EKS["Amazon EKS"]
+    EKS --> RDS[("RDS PostgreSQL")]
+    EKS --> Obs["Prometheus / Grafana / Loki / OpenTelemetry"]
+```
+
+Eklenen ileri seviye konular:
+
+- `terraform/`: AWS VPC, EKS, RDS, ECR, IAM, GitHub OIDC altyapı kodları
+- `helm/`: Kubernetes için reusable Helm chart
+- `gitops/`: Argo CD App of Apps, dev/staging/production ayrımı
+- `gitops/platform/observability`: Prometheus, Grafana, Loki, Promtail, OpenTelemetry Collector hazırlığı
+
+Bu dosyalar gerçek AWS hesabında otomatik çalıştırılmaz. Önce plan/dry-run yapılmalı, maliyet ve güvenlik etkileri incelenmelidir.
+
+## Faydalı Komutlar
+
+```bash
+dotnet restore RentACarApi.slnx
+dotnet build RentACarApi.slnx --configuration Release
+dotnet test RentACarApi.slnx --configuration Release
+docker compose up --build
+docker compose down -v
+```
+
+Makefile kullananlar için:
+
+```bash
+make help
+make test
+make docker-up
+make smoke-test
+make gitops-validate
+```
+
+## Öğrendiklerim
+
+Bu projede özellikle şunları öğrendim:
+
+- Backend katmanlarını sade ve okunabilir ayırma
+- EF Core ile PostgreSQL modelleme
+- DTO ile API request/response kontrolü
+- Business rule yazma ve test etme
+- Docker Compose ile lokal geliştirme ortamı kurma
+- CI pipeline mantığı
+- Production benzeri DevOps mimarisinin temel parçaları
+
+## Kısa Not
+
+Bu proje backend temellerini göstermek için tasarlanmıştır. İleri DevOps klasörleri, uzmanlık iddiasından çok öğrenme sürecini ve production mimarisine olan ilgiyi göstermek için eklenmiştir.

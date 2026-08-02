@@ -1,0 +1,129 @@
+name: Publish Image and Update Dev GitOps
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: image-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  GITOPS_REPOSITORY: ${{ vars.GITOPS_REPOSITORY }}
+
+jobs:
+  publish:
+    name: Build, Scan, Push and Update Dev
+    runs-on: ubuntu-latest
+    if: github.repository == 'utku9012/rentacar-backend-api'
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.301
+          cache: true
+          cache-dependency-path: |
+            packages.lock.json
+            RentACar.UnitTests/packages.lock.json
+            RentACar.IntegrationTests/packages.lock.json
+
+      - name: Restore
+        run: dotnet restore RentACarApi.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build RentACarApi.slnx --configuration Release --no-restore
+
+      - name: Unit tests
+        run: dotnet test RentACar.UnitTests/RentACar.UnitTests.csproj --configuration Release --no-build
+
+      - name: Integration tests
+        run: dotnet test RentACar.IntegrationTests/RentACar.IntegrationTests.csproj --configuration Release --no-build
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ECR_PUBLISHER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: docker build --tag "${ECR_REPOSITORY}:${GITHUB_SHA}" .
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Push image
+        run: docker push "${ECR_REPOSITORY}:${GITHUB_SHA}"
+
+      - name: Get image digest
+        id: digest
+        run: |
+          digest="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY##*/}" \
+            --image-ids imageTag="${GITHUB_SHA}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout GitOps repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPOSITORY }}
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          path: gitops-repo
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Update dev image tag
+        env:
+          GITOPS_ROOT: gitops-repo
+        run: ./scripts/update-gitops-image.sh dev "${ECR_REPOSITORY}" "${GITHUB_SHA}" "${{ steps.digest.outputs.digest }}"
+
+      - name: Commit GitOps update
+        working-directory: gitops-repo
+        run: |
+          if git diff --quiet; then
+            echo "No GitOps changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add environments/dev/values.yaml
+          git commit -m "deploy(dev): update rentacar-api to ${GITHUB_SHA::7}" \
+            -m "Source commit: ${GITHUB_SHA}" \
+            -m "Image digest: ${{ steps.digest.outputs.digest }}" \
+            -m "Workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          git push

@@ -1,0 +1,67 @@
+name: Helm
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - "helm/**"
+      - ".github/workflows/helm.yml"
+      - "docs/helm-chart.md"
+      - "docs/kubernetes-*.md"
+      - "docs/eks-prerequisites.md"
+      - "docs/database-migrations.md"
+
+concurrency:
+  group: helm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  helm-validation:
+    name: Helm Lint and Schema Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
+      - name: Set up kubeconform
+        run: |
+          curl -sSL -o kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz
+          sudo mv kubeconform /usr/local/bin/kubeconform
+
+      - name: Helm lint
+        run: helm lint helm/rentacar-api
+
+      - name: Render base manifests
+        run: helm template rentacar-api helm/rentacar-api > rendered-base.yaml
+
+      - name: Render dev manifests
+        run: helm template rentacar-api helm/rentacar-api -f helm/rentacar-api/values-dev.yaml > rendered-dev.yaml
+
+      - name: Render staging manifests
+        run: helm template rentacar-api helm/rentacar-api -f helm/rentacar-api/values-staging.yaml > rendered-staging.yaml
+
+      - name: Render production manifests
+        run: helm template rentacar-api helm/rentacar-api -f helm/rentacar-api/values-production.yaml > rendered-production.yaml
+
+      - name: Validate rendered manifests
+        run: >
+          kubeconform
+          -strict
+          -summary
+          -ignore-missing-schemas
+          rendered-base.yaml
+          rendered-dev.yaml
+          rendered-staging.yaml
+          rendered-production.yaml

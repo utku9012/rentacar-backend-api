@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: rentacar
+  namespace: argocd
+spec:
+  description: RentACar API application project
+  sourceRepos:
+    - https://github.com/utku9012/rentacar-backend-api.git
+    - REPLACE_WITH_GITOPS_REPOSITORY_URL
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: rentacar-dev
+    - server: https://kubernetes.default.svc
+      namespace: rentacar-staging
+    - server: https://kubernetes.default.svc
+      namespace: rentacar-production
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Pod
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: apps
+      kind: Deployment
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: batch
+      kind: Job
+    - group: external-secrets.io
+      kind: ExternalSecret
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: policy
+      kind: PodDisruptionBudget
+  roles:
+    - name: developer
+      description: View non-production and sync development
+      policies:
+        - p, proj:rentacar:developer, applications, get, rentacar/rentacar-api-dev, allow
+        - p, proj:rentacar:developer, applications, sync, rentacar/rentacar-api-dev, allow
+        - p, proj:rentacar:developer, applications, get, rentacar/rentacar-api-staging, allow
+    - name: operator
+      description: View all environments and sync staging
+      policies:
+        - p, proj:rentacar:operator, applications, get, rentacar/*, allow
+        - p, proj:rentacar:operator, applications, sync, rentacar/rentacar-api-staging, allow
+    - name: admin
+      description: Full RentACar project administration
+      policies:
+        - p, proj:rentacar:admin, applications, *, rentacar/*, allow

@@ -121,6 +121,46 @@ public class RentalServiceTests
         Assert.Equal("Vehicle not found.", result.ErrorMessage);
     }
 
+    [Fact]
+    public async Task CreateRentalAsync_WhenCustomerDoesNotExist_ReturnsError()
+    {
+        using var context = CreateContext();
+        await SeedBaseDataAsync(context);
+        var service = CreateService(context);
+
+        var result = await service.CreateRentalAsync(new CreateRentalDto
+        {
+            CustomerId = 999,
+            VehicleId = 1,
+            BranchId = 1,
+            RentDate = "2026-06-20",
+            ReturnDate = "2026-06-25"
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Customer not found.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task CreateRentalAsync_WhenBranchDoesNotExist_ReturnsError()
+    {
+        using var context = CreateContext();
+        await SeedBaseDataAsync(context);
+        var service = CreateService(context);
+
+        var result = await service.CreateRentalAsync(new CreateRentalDto
+        {
+            CustomerId = 1,
+            VehicleId = 1,
+            BranchId = 999,
+            RentDate = "2026-06-20",
+            ReturnDate = "2026-06-25"
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Branch not found.", result.ErrorMessage);
+    }
+
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

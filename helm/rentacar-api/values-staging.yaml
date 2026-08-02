@@ -1,0 +1,69 @@
+replicaCount: 2
+
+image:
+  repository: REPLACE_WITH_ECR_REPOSITORY
+  tag: REPLACE_WITH_COMMIT_SHA
+
+gitops:
+  enabled: true
+
+config:
+  aspNetCoreEnvironment: Docker
+  swaggerEnabled: "true"
+  metricsEnabled: "true"
+  observability:
+    tracingEnabled: "true"
+    otlpEndpoint: http://opentelemetry-collector.observability:4317
+
+ingress:
+  enabled: true
+  hosts:
+    - host: api-staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+networkPolicy:
+  enabled: true
+  allowMonitoring: true
+  rds:
+    enabled: true
+    cidr: 10.50.96.0/19
+
+serviceMonitor:
+  enabled: true
+
+prometheusRule:
+  enabled: true
+
+grafanaDashboard:
+  enabled: true
+
+externalSecrets:
+  enabled: true
+  remoteSecretKey: rentacar/staging/database
+
+migration:
+  useHelmHooks: false
+  useArgoHooks: true
+
+smokeTest:
+  enabled: true
+  useArgoHook: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 750m
+    memory: 768Mi

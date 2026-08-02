@@ -4,7 +4,7 @@ ASP.NET Core Web API ile geliştirilmiş basit bir Rent A Car backend projesidir
 
 Bu projenin ana amacı; REST API, Entity Framework Core, PostgreSQL, DTO, Service Layer, Repository Pattern, Docker Compose, test ve temel CI/CD mantığını gösterebilmektir.
 
-> Not: `terraform/`, `helm/`, `gitops/` ve observability dosyaları production-ready mimariyi öğrenmek için hazırlanmış ileri seviye DevOps çalışmalarıdır. Gerçek AWS ortamında apply edilmedi; portfolio/learning amaçlıdır.
+> Not: `terraform/`, `helm/`, `gitops/` ve observability dosyaları production-ready mimariyi öğrenmek için hazırlanmış DevOps çalışmalarımdır. Gerçek AWS ortamında deploy etmedim. Öğrenme ve pratik amaçlı yapılmıştır.
 
 ## Ana Backend Kapsamı
 
